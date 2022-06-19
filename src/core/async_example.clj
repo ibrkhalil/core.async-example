@@ -121,3 +121,21 @@
 
 (comment
   (<!! (request-and-process)))
+
+(def logging-chan (chan 24))
+
+(defn log [& args]
+  (>!! logging-chan (apply str args)))
+
+(future
+  (loop []
+    (when-some [v (<!! logging-chan)]
+      (println v)
+      (recur))))
+
+(do (future
+      (dotimes [x 100]
+        (log "(..." x "...)")))
+    (future
+      (dotimes [x 100]
+        (log "(..." x "...)"))))
