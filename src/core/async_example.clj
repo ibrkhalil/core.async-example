@@ -1,5 +1,7 @@
 (ns core.async-example
-  (:require [clojure.core.async :refer [chan thread close! put! go <! >! sliding-buffer dropping-buffer take! <!! >!!]]))
+  (:require [clojure.core.async :refer [chan thread close! put! go <! >! sliding-buffer dropping-buffer take! <!! >!!]]
+            [org.httpkit.client :as http]
+            [cheshire.core :as cheshire]))
 
 (defn foo
   "I don't do a whole lot."
@@ -66,32 +68,56 @@
 
 
 ; Thread
-(<!! (thread 42
+(comment
+  (<!! (thread 42
      (let [t1 (thread "Thread 1")
            t2 (thread "Thread 2")]
           [(<!! t1)
-           (<!! t2)])))
+           (<!! t2)]))))
 
-(let [c (chan)]
+(comment
+  (let [c (chan)]
      (thread
        (dotimes [x 3]
                 (>!! c x)
                 (println "Put: " x)))
      (thread
        (dotimes [x 3]
-                (println "Got: " (<!! c)))))
+                (println "Got: " (<!! c))))))
 
-(<!! (go 42))
+(comment
+  (<!! (go 42)))
 
-(let [c (chan)]
+(comment
+  (let [c (chan)]
      (go (dotimes [x 3]
                   (>! c x)
                   (println "Put: " x)))
      (go (dotimes [x 3]
-                  (println "Got: " (<! c)))))
+                  (println "Got: " (<! c))))))
 
-(let [c (chan)]
+(comment
+  (let [c (chan)]
      (go (doseq [x (range 3)]
                 (>! c x)))
      (go (dotimes [x 3]
-                  (println "Got: " (<! c)))))
+                  (println "Got: " (<! c))))))
+
+; Sample usage for channels
+
+(defn http-get [url]
+  (let [c (chan)]
+    (println url)
+    @(http/get url (partial put! c))
+    c))
+
+(defn request-and-process []
+  (go
+    (-> "https://api.github.com/users/defunkt"
+        http-get
+        <!
+        :body
+        (cheshire/parse-string true))))
+
+(comment
+  (<!! (request-and-process)))
